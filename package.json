@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "export": "node scripts/export.js",
-    "serve-export": "npx serve dist-export"
+    "serve-export": "npx serve dist-export",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@codemirror/lang-javascript": "^6.2.5",
@@ -18,6 +20,7 @@
     "esbuild": "^0.28.0",
     "svelte": "^5.55.1",
     "terser": "^5.46.1",
-    "vite": "^8.0.4"
+    "vite": "^8.0.4",
+    "vitest": "^4.1.3"
   }
 }
