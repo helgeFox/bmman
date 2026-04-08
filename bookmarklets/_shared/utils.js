@@ -12,5 +12,5 @@ export function replaceIf(oldVal, newVal, source) {
 }
 
 export function copyText(window, str, message) {
-  window.navigator.clipboard.writeText(str).then(window.alert.bind(null, message))
+  window.navigator.clipboard.writeText(str).then(window.alert.bind(null, message)).catch(err => console.log('copyText error:', err))
 }

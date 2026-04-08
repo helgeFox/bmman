@@ -32,7 +32,7 @@ function scanBookmarklets() {
 
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (!entry.isDirectory()) continue;
-    if (entry.name.startsWith('_')) continue;
+    const isShared = entry.name.startsWith('_');
 
     const groupDir = path.join(BOOKMARKLETS_DIR, entry.name);
     const files = fs.readdirSync(groupDir).filter(f => f.endsWith('.js')).sort();
@@ -54,7 +54,8 @@ function scanBookmarklets() {
 
     groups.push({
       id: entry.name,
-      name: toDisplayName(entry.name),
+      name: isShared ? entry.name : toDisplayName(entry.name),
+      shared: isShared,
       bookmarklets,
     });
   }

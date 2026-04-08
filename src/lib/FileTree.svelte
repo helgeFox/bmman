@@ -6,7 +6,7 @@
   let newFilename = $state('');
   let useCustomGroup = $state(false);
 
-  let groupIds = $derived(groups.map(g => g.id));
+  let groupIds = $derived(groups.filter(g => !g.shared).map(g => g.id));
 
   function toggleForm() {
     showCreateForm = !showCreateForm;
@@ -53,7 +53,7 @@
     <form class="create-form" onsubmit={(e) => { e.preventDefault(); handleCreate(); }}>
       {#if groupIds.length > 0 && !useCustomGroup}
         <select onchange={handleGroupSelect} value={newGroup}>
-          {#each groups as group}
+          {#each groups.filter(g => !g.shared) as group}
             <option value={group.id}>{group.name}</option>
           {/each}
           <option value="__new__">New group...</option>
@@ -73,7 +73,7 @@
 
   {#each groups as group}
     <div class="group">
-      <div class="group-name">{group.name}</div>
+      <div class="group-name" class:shared={group.shared}>{group.name}</div>
       {#each group.bookmarklets as bm}
         <button
           class="tree-item"
@@ -199,6 +199,12 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-muted);
+  }
+
+  .group-name.shared {
+    font-style: italic;
+    text-transform: none;
+    opacity: 0.7;
   }
 
   .tree-item {
