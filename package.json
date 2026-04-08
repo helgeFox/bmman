@@ -1,0 +1,23 @@
+{
+  "name": "bmman",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "export": "node scripts/export.js",
+    "serve-export": "npx serve dist-export"
+  },
+  "devDependencies": {
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "codemirror": "^6.0.2",
+    "esbuild": "^0.28.0",
+    "svelte": "^5.55.1",
+    "terser": "^5.46.1",
+    "vite": "^8.0.4"
+  }
+}

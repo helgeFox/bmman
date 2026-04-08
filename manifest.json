@@ -1,0 +1,75 @@
+{
+  "bookmarklets": {
+    "utilities/highlight-links.js": {
+      "description": "Highlights all links on the page with a red outline."
+    },
+    "utilities/remove-sticky.js": {
+      "description": "Removes all fixed and sticky positioned elements."
+    },
+    "dev-tools/view-source.js": {
+      "description": "Opens the page source in a new window."
+    },
+    "dev-tools/edit-page.js": {
+      "description": "Toggles contentEditable mode on the entire page."
+    },
+    "editor/OpenTemplateManager.js": {
+      "description": "Åpner malen i TM modus (nytt vindu)",
+      "tags": [
+        "editor"
+      ],
+      "icon": "✏"
+    },
+    "editor/TranslationKeys.js": {
+      "description": "Reloader malen med synlige TranslationKeys",
+      "tags": [
+        "editor"
+      ],
+      "icon": "👓"
+    },
+    "editor/UnlockTextFrames.js": {
+      "description": "Reloader malen med ulåste tekstfelter",
+      "tags": [
+        "editor"
+      ],
+      "icon": "🔓"
+    },
+    "editor/DownloadIdml.js": {
+      "description": "Laster ned IDML-filen (kun i Edit og krever admin-innlogging)",
+      "tags": [
+        "editor"
+      ],
+      "icon": "📂"
+    },
+    "editor/CopyGuid.js": {
+      "description": "Kopierer GUID for malen (kun i Edit)",
+      "icon": "🔖",
+      "tags": [
+        "editor"
+      ]
+    },
+    "editor-dev/OpenLocalHost.js": {
+      "icon": "🤖",
+      "description": "Åpner malen på localhost",
+      "tags": [
+        "editor",
+        "developer"
+      ]
+    },
+    "editor-dev/CopyLocalhost.js": {
+      "description": "Kopierer localhost-url til clipboard",
+      "icon": "👾",
+      "tags": [
+        "editor",
+        "developer"
+      ]
+    },
+    "editor-dev/GetSessionId.js": {
+      "description": "Kopierer SessionId fra malen",
+      "icon": "🔑",
+      "tags": [
+        "editor",
+        "developer"
+      ]
+    }
+  }
+}

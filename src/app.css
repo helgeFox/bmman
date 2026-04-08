@@ -1,0 +1,4 @@
+/* Reset — all styling is in Svelte components */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
