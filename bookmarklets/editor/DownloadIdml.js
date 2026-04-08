@@ -9,6 +9,5 @@ var urls = {
   href = getHref(window.document),
   guid = getEditGuid(href),
   environment = getCurrentEnvironment(href)
-if (!guid) guid = getEditGuid(href)
 if (guid) window.open(`${urls[environment]}/Extras/Idml?guid=${guid}&handler=Download`)
-else alert('Sorry, kunne ikke finne noen IDML å laste ned... Er du i *EDIT* mode?')
+else alert('Sorry, kunne ikke finne noen IDML å laste ned... Er du i *EDIT* mode?'), console.log('feil', href, guid, environment)
