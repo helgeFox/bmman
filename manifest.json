@@ -1,17 +1,5 @@
 {
   "bookmarklets": {
-    "utilities/highlight-links.js": {
-      "description": "Highlights all links on the page with a red outline."
-    },
-    "utilities/remove-sticky.js": {
-      "description": "Removes all fixed and sticky positioned elements."
-    },
-    "dev-tools/view-source.js": {
-      "description": "Opens the page source in a new window."
-    },
-    "dev-tools/edit-page.js": {
-      "description": "Toggles contentEditable mode on the entire page."
-    },
     "editor/OpenTemplateManager.js": {
       "description": "Åpner malen i TM modus (nytt vindu)",
       "tags": [
