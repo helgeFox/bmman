@@ -90,6 +90,11 @@ export function apiPlugin() {
       server.middlewares.use(async (req, res, next) => {
         const url = new URL(req.url, 'http://localhost');
 
+        // GET /api/health — cheap liveness probe for the manager UI
+        if (req.method === 'GET' && url.pathname === '/api/health') {
+          return sendJson(res, { ok: true });
+        }
+
         // GET /api/bookmarklets — list all groups and bookmarklets
         if (req.method === 'GET' && url.pathname === '/api/bookmarklets') {
           return sendJson(res, scanBookmarklets());

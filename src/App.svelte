@@ -3,13 +3,61 @@
   import CodeEditor from './lib/CodeEditor.svelte';
   import MetaEditor from './lib/MetaEditor.svelte';
   import SizeIndicator from './lib/SizeIndicator.svelte';
-  import { fetchBookmarklets, saveSource, saveMeta, createBookmarklet, deleteBookmarklet } from './lib/api.js';
+  import { fetchBookmarklets, saveSource, saveMeta, createBookmarklet, deleteBookmarklet, checkHealth } from './lib/api.js';
 
   let groups = $state([]);
   let selected = $state(null);
   let source = $state('');
   let saving = $state(false);
+  let online = $state(true);
+  let saveError = $state(null);
+  let dirty = $state(false);
   let saveTimer;
+
+  $effect(() => {
+    let timer;
+    let cancelled = false;
+
+    async function tick() {
+      if (cancelled) return;
+      if (document.visibilityState === 'visible') {
+        const wasOnline = online;
+        const now = await checkHealth();
+        online = now;
+        if (now && !wasOnline && dirty) {
+          // Server just came back — try to flush unsaved changes
+          // before Vite's HMR triggers a full page reload.
+          flushSave();
+        }
+      }
+      if (!cancelled) timer = setTimeout(tick, online ? 15000 : 3000);
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === 'visible') {
+        clearTimeout(timer);
+        tick();
+      }
+    }
+
+    function onBeforeUnload(e) {
+      if (dirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    }
+
+    tick();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('beforeunload', onBeforeUnload);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('beforeunload', onBeforeUnload);
+    };
+  });
 
   async function load() {
     groups = await fetchBookmarklets();
@@ -35,6 +83,7 @@
 
   function handleSourceChange(newSource) {
     source = newSource;
+    dirty = true;
     if (saveTimer) clearTimeout(saveTimer);
     saving = true;
     saveTimer = setTimeout(() => flushSave(), 500);
@@ -45,8 +94,17 @@
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = null;
     saving = true;
-    await saveSource(selected.id, source);
-    saving = false;
+    try {
+      await saveSource(selected.id, source);
+      saveError = null;
+      online = true;
+      dirty = false;
+    } catch (e) {
+      saveError = e?.message || 'save failed';
+      online = false;
+    } finally {
+      saving = false;
+    }
   }
 
   async function handleMetaChange(meta) {
@@ -96,7 +154,23 @@
   }
 }} />
 
-<div class="app">
+{#if !online || saveError}
+  <div class="alert-banner" role="alert">
+    <span class="alert-icon">⚠</span>
+    <span class="alert-msg">
+      {#if !online}
+        Dev server offline — unsaved changes in the editor will be lost on reload.
+      {:else}
+        Save failed: {saveError}
+      {/if}
+    </span>
+    <button class="retry-btn" onclick={() => flushSave()} disabled={saving}>
+      {saving ? 'Retrying…' : 'Retry save'}
+    </button>
+  </div>
+{/if}
+
+<div class="app" class:with-banner={!online || saveError}>
   <aside class="sidebar">
     <FileTree
       {groups}
@@ -120,8 +194,12 @@
       <CodeEditor value={source} onchange={handleSourceChange} />
       <div class="status-bar">
         <SizeIndicator {source} />
-        {#if saving}
+        {#if !online}
+          <span class="save-status offline">⚠ Dev server offline — changes not saved</span>
+        {:else if saving}
           <span class="save-status">Saving...</span>
+        {:else if saveError}
+          <span class="save-status offline">Save failed: {saveError}</span>
         {:else}
           <span class="save-status">Saved</span>
         {/if}
@@ -160,6 +238,56 @@
     height: 100vh;
   }
 
+  .app.with-banner {
+    height: calc(100vh - 44px);
+  }
+
+  .alert-banner {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    height: 44px;
+    box-sizing: border-box;
+    padding: 0 16px;
+    background: var(--danger);
+    color: #1e1e2e;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .alert-icon {
+    font-size: 18px;
+  }
+
+  .alert-msg {
+    flex: 1;
+  }
+
+  .retry-btn {
+    padding: 4px 12px;
+    border: 1px solid #1e1e2e;
+    border-radius: 4px;
+    background: #1e1e2e;
+    color: var(--danger);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  .retry-btn:hover:not(:disabled) {
+    background: transparent;
+    color: #1e1e2e;
+  }
+
+  .retry-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
   .sidebar {
     width: 240px;
     min-width: 200px;
@@ -185,6 +313,11 @@
   .save-status {
     font-size: 12px;
     color: var(--text-muted);
+  }
+
+  .save-status.offline {
+    color: var(--danger);
+    font-weight: 600;
   }
 
   .placeholder {
