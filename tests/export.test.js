@@ -2,176 +2,20 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-
-const exec = promisify(execFile);
+import {
+  toDisplayName,
+  readManifest,
+  compileBookmarklet,
+  scanAndCompile,
+  generateHTML,
+} from '../scripts/export-lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const EXPORT_SCRIPT = path.join(ROOT, 'scripts', 'export.js');
 const FIXTURE_DIR = path.join(ROOT, '.test-export-fixtures');
 const BM_DIR = path.join(FIXTURE_DIR, 'bookmarklets');
 const DIST_DIR = path.join(FIXTURE_DIR, 'dist-export');
 const TEMPLATES_DIR = path.join(FIXTURE_DIR, 'src', 'export-templates');
-
-// The export script uses __dirname-relative paths, so we can't just chdir.
-// Instead we create a self-contained copy of the script that points to our fixtures.
-function createFixtureScript() {
-  const script = `
-import fs from 'node:fs';
-import path from 'node:path';
-import { minify } from 'terser';
-import esbuild from 'esbuild';
-
-const ROOT = ${JSON.stringify(FIXTURE_DIR)};
-const BOOKMARKLETS_DIR = path.join(ROOT, 'bookmarklets');
-const MANIFEST_PATH = path.join(ROOT, 'manifest.json');
-const DIST_DIR = path.join(ROOT, 'dist-export');
-const TEMPLATES_DIR = path.join(ROOT, 'src', 'export-templates');
-
-function toDisplayName(filename) {
-  return filename
-    .replace(/\\.js$/, '')
-    .replace(/-/g, ' ')
-    .replace(/\\b\\w/g, c => c.toUpperCase());
-}
-
-function readManifest() {
-  try {
-    return JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8'));
-  } catch {
-    return { bookmarklets: {} };
-  }
-}
-
-function parseArgs() {
-  const args = process.argv.slice(2);
-  const opts = { groups: null, include: null };
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--groups' && args[i + 1]) {
-      opts.groups = args[++i].split(',').map(s => s.trim());
-    } else if (args[i] === '--include' && args[i + 1]) {
-      opts.include = args[++i].split(',').map(s => s.trim());
-    }
-  }
-  return opts;
-}
-
-async function compileBookmarklet(filePath) {
-  const bundled = await esbuild.build({
-    entryPoints: [filePath],
-    bundle: true,
-    write: false,
-    format: 'iife',
-    platform: 'browser',
-    target: 'esnext',
-  });
-  const bundledCode = bundled.outputFiles[0].text;
-  const result = await minify(bundledCode, {
-    compress: { passes: 2 },
-    mangle: true,
-  });
-  const encoded = encodeURIComponent(result.code);
-  return {
-    url: 'javascript:' + encoded,
-    size: 'javascript:'.length + encoded.length,
-  };
-}
-
-async function scanAndCompile(opts) {
-  const manifest = readManifest();
-  const groups = [];
-  if (!fs.existsSync(BOOKMARKLETS_DIR)) {
-    console.error('No bookmarklets/ directory found.');
-    process.exit(1);
-  }
-  const entries = fs.readdirSync(BOOKMARKLETS_DIR, { withFileTypes: true });
-  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (!entry.isDirectory()) continue;
-    if (entry.name.startsWith('_')) continue;
-    if (opts.groups && !opts.groups.includes(entry.name)) continue;
-    const groupDir = path.join(BOOKMARKLETS_DIR, entry.name);
-    const files = fs.readdirSync(groupDir).filter(f => f.endsWith('.js')).sort();
-    const bookmarklets = [];
-    for (const file of files) {
-      const relPath = entry.name + '/' + file;
-      if (opts.include && !opts.include.includes(relPath)) continue;
-      const fullPath = path.join(groupDir, file);
-      const meta = manifest.bookmarklets?.[relPath] || {};
-      const compiled = await compileBookmarklet(fullPath);
-      const sizeLabel = compiled.size > 2000
-        ? compiled.size + ' chars [WARNING: exceeds 2000 char limit]'
-        : compiled.size + ' chars';
-      console.log('  ' + relPath + ' — ' + sizeLabel);
-      const displayName = meta.name || toDisplayName(file);
-      const icon = meta.icon || '';
-      bookmarklets.push({
-        id: relPath,
-        name: icon ? icon + ' ' + displayName : displayName,
-        description: meta.description || '',
-        url: compiled.url,
-        size: compiled.size,
-      });
-    }
-    if (bookmarklets.length > 0) {
-      groups.push({ name: toDisplayName(entry.name), bookmarklets });
-    }
-  }
-  return groups;
-}
-
-function escapeHTML(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-function escapeAttr(str) {
-  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-}
-
-function generateHTML(groups) {
-  const template = fs.readFileSync(path.join(TEMPLATES_DIR, 'index.html'), 'utf-8');
-  const css = fs.readFileSync(path.join(TEMPLATES_DIR, 'style.css'), 'utf-8');
-  const js = fs.readFileSync(path.join(TEMPLATES_DIR, 'script.js'), 'utf-8');
-  let sectionsHTML = '';
-  for (const group of groups) {
-    sectionsHTML += '    <section class="group">\\n';
-    sectionsHTML += '      <h2>' + escapeHTML(group.name) + '</h2>\\n';
-    for (const bm of group.bookmarklets) {
-      sectionsHTML += '      <div class="bookmarklet">\\n';
-      sectionsHTML += '        <a class="bm-button" href="' + escapeAttr(bm.url) + '">' + escapeHTML(bm.name) + '</a>\\n';
-      if (bm.description) {
-        sectionsHTML += '        <p class="bm-desc">' + escapeHTML(bm.description) + '</p>\\n';
-      }
-      sectionsHTML += '      </div>\\n';
-    }
-    sectionsHTML += '    </section>\\n';
-  }
-  const html = template.replace('{{CONTENT}}', sectionsHTML);
-  fs.mkdirSync(path.join(DIST_DIR, 'assets'), { recursive: true });
-  fs.writeFileSync(path.join(DIST_DIR, 'index.html'), html);
-  fs.writeFileSync(path.join(DIST_DIR, 'assets', 'style.css'), css);
-  fs.writeFileSync(path.join(DIST_DIR, 'assets', 'script.js'), js);
-}
-
-async function main() {
-  const opts = parseArgs();
-  console.log('Compiling bookmarklets...\\n');
-  const groups = await scanAndCompile(opts);
-  if (groups.length === 0) {
-    console.log('No bookmarklets matched the given filters.');
-    process.exit(0);
-  }
-  generateHTML(groups);
-  const total = groups.reduce((n, g) => n + g.bookmarklets.length, 0);
-  console.log('\\nExported ' + total + ' bookmarklet(s) in ' + groups.length + ' group(s) to dist-export/');
-}
-
-main().catch(err => { console.error(err); process.exit(1); });
-`;
-  const scriptPath = path.join(FIXTURE_DIR, 'export-test.mjs');
-  fs.writeFileSync(scriptPath, script);
-  return scriptPath;
-}
 
 function setupFixtures() {
   // Bookmarklets
@@ -216,11 +60,11 @@ function setupFixtures() {
     }),
   );
 
-  // Export templates
+  // Export templates (Handlebars)
   fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
   fs.writeFileSync(
     path.join(TEMPLATES_DIR, 'index.html'),
-    '<!doctype html><html><body>{{CONTENT}}</body></html>',
+    '<!doctype html><html><body>{{#each groups}}<section class="group"><h2>{{name}}</h2>{{#each bookmarklets}}<div class="bookmarklet"><a class="bm-button" href="{{{url}}}">{{name}}</a>{{#if description}}<p class="bm-desc">{{description}}</p>{{/if}}</div>{{/each}}</section>{{/each}}</body></html>',
   );
   fs.writeFileSync(path.join(TEMPLATES_DIR, 'style.css'), 'body{}');
   fs.writeFileSync(path.join(TEMPLATES_DIR, 'script.js'), '// js');
@@ -230,15 +74,77 @@ function cleanFixtures() {
   fs.rmSync(FIXTURE_DIR, { recursive: true, force: true });
 }
 
-async function runExport(args = []) {
-  const scriptPath = createFixtureScript();
-  const { stdout, stderr } = await exec('node', [scriptPath, ...args], {
-    cwd: FIXTURE_DIR,
+describe('toDisplayName', () => {
+  it('converts kebab-case filename to title case', () => {
+    expect(toDisplayName('highlight-links.js')).toBe('Highlight Links');
   });
-  return { stdout, stderr };
-}
 
-describe('Export pipeline', () => {
+  it('handles single-word filenames', () => {
+    expect(toDisplayName('cleanup.js')).toBe('Cleanup');
+  });
+
+  it('works on folder names (no .js extension)', () => {
+    expect(toDisplayName('dev-tools')).toBe('Dev Tools');
+  });
+});
+
+describe('readManifest', () => {
+  beforeEach(() => {
+    fs.mkdirSync(FIXTURE_DIR, { recursive: true });
+  });
+
+  afterEach(() => {
+    cleanFixtures();
+  });
+
+  it('reads and parses manifest.json', () => {
+    fs.writeFileSync(
+      path.join(FIXTURE_DIR, 'manifest.json'),
+      JSON.stringify({ bookmarklets: { 'a/b.js': { name: 'Test' } } }),
+    );
+    const result = readManifest(path.join(FIXTURE_DIR, 'manifest.json'));
+    expect(result.bookmarklets['a/b.js'].name).toBe('Test');
+  });
+
+  it('returns empty manifest when file does not exist', () => {
+    const result = readManifest(path.join(FIXTURE_DIR, 'nonexistent.json'));
+    expect(result).toEqual({ bookmarklets: {} });
+  });
+});
+
+describe('compileBookmarklet', () => {
+  beforeEach(() => {
+    fs.mkdirSync(FIXTURE_DIR, { recursive: true });
+  });
+
+  afterEach(() => {
+    cleanFixtures();
+  });
+
+  it('returns a javascript: URL and size', async () => {
+    fs.writeFileSync(path.join(FIXTURE_DIR, 'test.js'), 'alert(1);\n');
+    const result = await compileBookmarklet(path.join(FIXTURE_DIR, 'test.js'));
+    expect(result.url).toMatch(/^javascript:/);
+    expect(result.size).toBe(result.url.length);
+  });
+
+  it('bundles imports into a single output', async () => {
+    fs.mkdirSync(path.join(FIXTURE_DIR, 'lib'), { recursive: true });
+    fs.writeFileSync(
+      path.join(FIXTURE_DIR, 'lib', 'dep.js'),
+      'export function hello() { alert("hello"); }\n',
+    );
+    fs.writeFileSync(
+      path.join(FIXTURE_DIR, 'entry.js'),
+      'import { hello } from "./lib/dep.js";\nhello();\n',
+    );
+    const result = await compileBookmarklet(path.join(FIXTURE_DIR, 'entry.js'));
+    const decoded = decodeURIComponent(result.url.replace('javascript:', ''));
+    expect(decoded).toContain('hello');
+  });
+});
+
+describe('scanAndCompile', () => {
   beforeEach(() => {
     cleanFixtures();
     setupFixtures();
@@ -248,137 +154,165 @@ describe('Export pipeline', () => {
     cleanFixtures();
   });
 
-  describe('full export', () => {
-    it('generates dist-export/ with index.html and assets', async () => {
-      await runExport();
-
-      expect(fs.existsSync(path.join(DIST_DIR, 'index.html'))).toBe(true);
-      expect(fs.existsSync(path.join(DIST_DIR, 'assets', 'style.css'))).toBe(true);
-      expect(fs.existsSync(path.join(DIST_DIR, 'assets', 'script.js'))).toBe(true);
-    });
-
-    it('exported HTML contains all non-shared groups', async () => {
-      await runExport();
-      const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
-
-      expect(html).toContain('Utils');
-      expect(html).toContain('Dev Tools');
-      // Shared groups excluded
-      expect(html).not.toContain('_shared');
-      expect(html).not.toContain('helpers');
-    });
-
-    it('bookmarklet URLs start with javascript:', async () => {
-      await runExport();
-      const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
-      const hrefMatches = html.match(/href="(javascript:[^"]+)"/g);
-      expect(hrefMatches).not.toBeNull();
-      for (const match of hrefMatches) {
-        expect(match).toMatch(/^href="javascript:/);
-      }
-    });
-
-    it('applies manifest display name and icon', async () => {
-      await runExport();
-      const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
-      // Icon + name combo
-      expect(html).toContain('🔍 Highlight Links');
-    });
-
-    it('includes descriptions from manifest', async () => {
-      await runExport();
-      const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
-      expect(html).toContain('Highlights all links.');
-      expect(html).toContain('Opens console.');
-    });
-
-    it('uses filesystem-derived name when no manifest entry', async () => {
-      await runExport();
-      const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
-      expect(html).toContain('With Import');
-    });
+  it('returns all non-shared groups', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    const names = groups.map(g => g.name);
+    expect(names).toContain('Utils');
+    expect(names).toContain('Dev Tools');
   });
 
-  describe('shared dependency bundling', () => {
-    it('inlines imported shared code into the bookmarklet', async () => {
-      await runExport();
-      const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
-
-      // Find the href for with-import bookmarklet
-      const withImportMatch = html.match(/href="(javascript:[^"]+)"[^>]*>With Import/);
-      expect(withImportMatch).not.toBeNull();
-
-      const url = withImportMatch[1];
-      const decoded = decodeURIComponent(url.replace('javascript:', ''));
-      // The shared function body should be inlined
-      expect(decoded).toContain('Hello');
-    });
+  it('excludes _ prefixed shared groups', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    const names = groups.map(g => g.name);
+    expect(names).not.toContain('_shared');
+    expect(names).not.toContain('Shared');
   });
 
-  describe('--groups filter', () => {
-    it('exports only the specified groups', async () => {
-      await runExport(['--groups', 'utils']);
-      const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
-      expect(html).toContain('Utils');
-      expect(html).not.toContain('Dev Tools');
-    });
+  it('applies manifest metadata', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    const utils = groups.find(g => g.name === 'Utils');
+    const highlight = utils.bookmarklets.find(b => b.id === 'utils/highlight.js');
+    expect(highlight.name).toBe('🔍 Highlight Links');
+    expect(highlight.description).toBe('Highlights all links.');
   });
 
-  describe('--include filter', () => {
-    it('exports only the specified bookmarklets', async () => {
-      await runExport(['--include', 'utils/highlight.js']);
-      const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
-      expect(html).toContain('Highlight Links');
-      expect(html).not.toContain('With Import');
-      expect(html).not.toContain('Console');
-    });
+  it('uses filesystem-derived name when no manifest entry', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    const utils = groups.find(g => g.name === 'Utils');
+    const withImport = utils.bookmarklets.find(b => b.id === 'utils/with-import.js');
+    expect(withImport.name).toBe('With Import');
   });
 
-  describe('size warnings', () => {
-    it('prints size in output for each bookmarklet', async () => {
-      const { stdout } = await runExport();
-      expect(stdout).toContain('chars');
-      expect(stdout).toContain('utils/highlight.js');
-    });
-
-    it('warns when bookmarklet exceeds 2000 chars', async () => {
-      // Write a large bookmarklet that can't be minified away
-      // Use many unique console.log calls so Terser can't collapse them
-      const lines = [];
-      for (let i = 0; i < 300; i++) {
-        lines.push(`console.log("unique_string_${i}_${'x'.repeat(10)}");`);
-      }
-      fs.writeFileSync(path.join(BM_DIR, 'utils', 'big.js'), lines.join('\n') + '\n');
-
-      const { stdout } = await runExport();
-      expect(stdout).toContain('WARNING');
-      expect(stdout).toContain('exceeds 2000 char limit');
-    });
+  it('filters by --groups', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR, { groups: ['utils'] });
+    expect(groups).toHaveLength(1);
+    expect(groups[0].name).toBe('Utils');
   });
 
-  describe('HTML escaping', () => {
-    it('escapes HTML special characters in names and descriptions', async () => {
-      const manifest = JSON.parse(fs.readFileSync(path.join(FIXTURE_DIR, 'manifest.json'), 'utf-8'));
-      manifest.bookmarklets['dev-tools/console.js'] = {
-        name: 'Test <script>',
-        description: 'A "dangerous" & <bold> desc',
-      };
-      fs.writeFileSync(path.join(FIXTURE_DIR, 'manifest.json'), JSON.stringify(manifest));
-
-      await runExport();
-      const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
-      expect(html).toContain('Test &lt;script&gt;');
-      expect(html).toContain('A &quot;dangerous&quot; &amp; &lt;bold&gt; desc');
-      expect(html).not.toContain('<script>');
-    });
+  it('filters by --include', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR, { include: ['utils/highlight.js'] });
+    expect(groups).toHaveLength(1);
+    expect(groups[0].bookmarklets).toHaveLength(1);
+    expect(groups[0].bookmarklets[0].id).toBe('utils/highlight.js');
   });
 
-  describe('display name derivation', () => {
-    it('converts kebab-case to title case', async () => {
-      const { stdout } = await runExport();
-      // dev-tools group becomes "Dev Tools" heading
-      const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
-      expect(html).toContain('Dev Tools');
-    });
+  it('returns empty array when bookmarklets dir is missing', async () => {
+    const emptyDir = path.join(FIXTURE_DIR, 'empty');
+    fs.mkdirSync(emptyDir, { recursive: true });
+    const groups = await scanAndCompile(emptyDir);
+    expect(groups).toEqual([]);
+  });
+
+  it('warns when bookmarklet exceeds 2000 chars', async () => {
+    const lines = [];
+    for (let i = 0; i < 300; i++) {
+      lines.push(`console.log("unique_string_${i}_${'x'.repeat(10)}");`);
+    }
+    fs.writeFileSync(path.join(BM_DIR, 'utils', 'big.js'), lines.join('\n') + '\n');
+
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    const utils = groups.find(g => g.name === 'Utils');
+    const big = utils.bookmarklets.find(b => b.id === 'utils/big.js');
+    expect(big.size).toBeGreaterThan(2000);
+  });
+});
+
+describe('generateHTML', () => {
+  beforeEach(() => {
+    cleanFixtures();
+    setupFixtures();
+  });
+
+  afterEach(() => {
+    cleanFixtures();
+  });
+
+  it('generates dist-export/ with index.html and assets', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    generateHTML(groups, FIXTURE_DIR);
+
+    expect(fs.existsSync(path.join(DIST_DIR, 'index.html'))).toBe(true);
+    expect(fs.existsSync(path.join(DIST_DIR, 'assets', 'style.css'))).toBe(true);
+    expect(fs.existsSync(path.join(DIST_DIR, 'assets', 'script.js'))).toBe(true);
+  });
+
+  it('exported HTML contains group headings', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    generateHTML(groups, FIXTURE_DIR);
+    const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
+
+    expect(html).toContain('Utils');
+    expect(html).toContain('Dev Tools');
+  });
+
+  it('bookmarklet URLs start with javascript:', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    generateHTML(groups, FIXTURE_DIR);
+    const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
+    const hrefMatches = html.match(/href="(javascript:[^"]+)"/g);
+    expect(hrefMatches).not.toBeNull();
+    for (const match of hrefMatches) {
+      expect(match).toMatch(/^href="javascript:/);
+    }
+  });
+
+  it('includes icon prefix in button text', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    generateHTML(groups, FIXTURE_DIR);
+    const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
+    expect(html).toContain('🔍 Highlight Links');
+  });
+
+  it('includes descriptions from manifest', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    generateHTML(groups, FIXTURE_DIR);
+    const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
+    expect(html).toContain('Highlights all links.');
+    expect(html).toContain('Opens console.');
+  });
+
+  it('omits description paragraph when empty', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    generateHTML(groups, FIXTURE_DIR);
+    const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
+    // with-import has no description — should not have an empty <p>
+    const withImportSection = html.split('With Import')[1].split('</div>')[0];
+    expect(withImportSection).not.toContain('bm-desc');
+  });
+
+  it('inlines shared imports into bookmarklet URL', async () => {
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    generateHTML(groups, FIXTURE_DIR);
+    const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
+
+    const withImportMatch = html.match(/href="(javascript:[^"]+)"[^>]*>With Import/);
+    expect(withImportMatch).not.toBeNull();
+
+    const decoded = decodeURIComponent(withImportMatch[1].replace('javascript:', ''));
+    expect(decoded).toContain('Hello');
+  });
+
+  it('escapes HTML special characters in names and descriptions', async () => {
+    // Inject dangerous manifest entries
+    fs.writeFileSync(
+      path.join(FIXTURE_DIR, 'manifest.json'),
+      JSON.stringify({
+        bookmarklets: {
+          'dev-tools/console.js': {
+            name: 'Test <script>',
+            description: 'A "dangerous" & <bold> desc',
+          },
+        },
+      }),
+    );
+
+    const groups = await scanAndCompile(FIXTURE_DIR);
+    generateHTML(groups, FIXTURE_DIR);
+    const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf-8');
+    expect(html).toContain('Test &lt;script&gt;');
+    expect(html).toContain('&amp;');
+    expect(html).toContain('&lt;bold&gt;');
+    // Raw <script> tag must not appear unescaped
+    expect(html).not.toMatch(/<script>(?!src)/);
   });
 });

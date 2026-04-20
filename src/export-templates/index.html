@@ -13,7 +13,19 @@
       <p class="instructions">Drag any button to your bookmark bar to install it.</p>
     </header>
 
-{{CONTENT}}
+    {{#each groups}}
+    <section class="group">
+      <h2>{{name}}</h2>
+      {{#each bookmarklets}}
+      <div class="bookmarklet">
+        <a class="bm-button" href="{{{url}}}">{{name}}</a>
+        {{#if description}}
+        <p class="bm-desc">{{description}}</p>
+        {{/if}}
+      </div>
+      {{/each}}
+    </section>
+    {{/each}}
   </div>
   <script src="assets/script.js"></script>
 </body>
