@@ -72,7 +72,8 @@
       ]
     },
     "editor/OpenTestEditor2.js": {
-      "description": "Opens the Editor2 from old Editor"
+      "description": "Opens the Editor2 from old Editor",
+      "icon": "🧪"
     }
   }
 }

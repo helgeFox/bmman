@@ -4,12 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bookmarklets</title>
+  <script>
+    (function () {
+      var t = localStorage.getItem('bm-theme');
+      if (t === 'light' || t === 'dark') {
+        document.documentElement.setAttribute('data-theme', t);
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Bookmarklets</h1>
+      <div class="header-row">
+        <h1>Bookmarklets</h1>
+        <select class="theme-select" id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
       <p class="instructions">Drag any button to your bookmark bar to install it.</p>
     </header>
 
