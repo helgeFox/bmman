@@ -203,6 +203,15 @@ The output is a static HTML page designed for end users (not developers). It con
 - `dist/assets/script.js` — Minimal JS for the exported page (e.g., copy-to-clipboard fallback, visual feedback on drag).
 - These are generated from templates in `src/export-templates/` or similar.
 
+## Deployment
+
+The exported page is published to GitHub Pages via `.github/workflows/deploy-export.yml`:
+
+- Triggers on push to `master` (or manually via `workflow_dispatch`).
+- Runs `npm ci` → `npm test` → `npm run export`, then publishes `dist-export/` using the official Pages actions (`upload-pages-artifact` + `deploy-pages`). No `gh-pages` branch is maintained.
+- Requires repo **Settings → Pages → Source: GitHub Actions**.
+- The `github-pages` environment restricts deploys by branch. If deploys are allowed only from the default branch and the default is not `master`, add `master` under **Settings → Environments → github-pages → Deployment branches and tags**.
+
 ## Tech Stack
 
 | Component          | Technology          |
