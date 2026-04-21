@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "export": "node scripts/export.js",
-    "serve-export": "npx serve dist-export",
+    "serve-export": "npx serve dist-export -p 4004",
     "test": "vitest run",
     "test:watch": "vitest"
   },
