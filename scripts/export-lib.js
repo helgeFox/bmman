@@ -102,6 +102,8 @@ export async function scanAndCompile(rootDir, opts = {}) {
 }
 
 export function generateHTML(groups, rootDir) {
+  const today = new Date().toISOString();
+
   const templatesDir = path.join(rootDir, 'src', 'export-templates');
   const distDir = path.join(rootDir, 'dist-export');
 
@@ -110,7 +112,7 @@ export function generateHTML(groups, rootDir) {
   const js = fs.readFileSync(path.join(templatesDir, 'script.js'), 'utf-8');
 
   const template = Handlebars.compile(templateSource);
-  const html = template({ groups });
+  const html = template({ groups, today });
 
   fs.mkdirSync(path.join(distDir, 'assets'), { recursive: true });
   fs.writeFileSync(path.join(distDir, 'index.html'), html);
