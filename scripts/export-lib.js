@@ -101,8 +101,26 @@ export async function scanAndCompile(rootDir, opts = {}) {
   return groups;
 }
 
+function getToday() {
+  const d = new Date();
+  const pad = (val, max = 2, fill = '0') => (val + '').padStart(max, fill);
+  return `${
+    pad(d.getFullYear())
+  }-${
+    pad(d.getMonth() + 1)
+  }-${
+    pad(d.getDate())
+  }T${
+    pad(d.getHours())
+  }:${
+    pad(d.getMinutes())
+  }:${
+    pad(d.getSeconds())
+  }`;
+}
+
 export function generateHTML(groups, rootDir) {
-  const today = new Date().toISOString();
+  const today = getToday();
 
   const templatesDir = path.join(rootDir, 'src', 'export-templates');
   const distDir = path.join(rootDir, 'dist-export');
