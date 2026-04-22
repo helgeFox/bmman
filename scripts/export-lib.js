@@ -101,8 +101,12 @@ export async function scanAndCompile(rootDir, opts = {}) {
   return groups;
 }
 
+function getDateTimeInTimezone(date, timeZone) {
+  return new Date(date.toLocaleString('en-US', { timeZone }));
+}
+
 function getToday() {
-  const d = new Date();
+  const d = getDateTimeInTimezone(new Date(), 'Europe/Amsterdam');
   const pad = (val, max = 2, fill = '0') => (val + '').padStart(max, fill);
   return `${
     pad(d.getFullYear())
@@ -110,13 +114,7 @@ function getToday() {
     pad(d.getMonth() + 1)
   }-${
     pad(d.getDate())
-  }T${
-    pad(d.getHours())
-  }:${
-    pad(d.getMinutes())
-  }:${
-    pad(d.getSeconds())
-  }`;
+  }T${d.toLocaleTimeString('nb-NO')}`;
 }
 
 export function generateHTML(groups, rootDir) {
