@@ -16,9 +16,9 @@ export function getEditGuid(src) {
   if (res.hash.indexOf('#edit/') >= 0) return res.hash.substr(res.hash.indexOf('#edit/') + 6)
 }
 
-export function getSessionId(url) {
-  var res = new URL(src)
-  return res.searchParams.has(key) ? n.searchParams.get(key) : null
+export function getSessionId(url, key) {
+  var res = new URL(url)
+  return res.searchParams.has(key) ? res.searchParams.get(key) : null
 }
 
 export function getCurrentEnvironment(url) {
