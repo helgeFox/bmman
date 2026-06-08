@@ -1,9 +1,11 @@
 import { getHref, setHref } from '../_shared/editor.js'
 
-var href = getHref(window.document)
-var str = 'debug-translation-keys=true', newHref
-if (href.indexOf('debug-translation-keys') >= 0)
-  newHref = href.replace(/debug-translation-keys=(true|false)/, str)
+const href = getHref(window.document),
+    key = 'debug-translation-keys',
+    str = `${key}=true`
+let newHref
+if (href.indexOf(key) >= 0)
+  newHref = href.replace(new RegExp(`${key}=(true|false)`), str)
 else if (href.indexOf('?') >= 0)
   newHref = href.replace(/\?/, '?' + str + '&')
 if (newHref)

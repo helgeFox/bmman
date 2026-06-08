@@ -1,11 +1,11 @@
 
 export function newWindow(window, url) {
-  var win = window.open(url, '_blank')
+  const win = window.open(url, '_blank')
   win.focus()
 }
 
 export function replaceIf(oldVal, newVal, source) {
-  var ret = false
+  let ret = false
   if (source && source.length > 0 && source.indexOf(oldVal) >= 0)
     ret = source.replace(oldVal, newVal)
   return ret

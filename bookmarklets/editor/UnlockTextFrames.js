@@ -1,9 +1,11 @@
 import { getHref, setHref } from '../_shared/editor.js'
 
-var href = getHref(window.document)
-var str = 'admin_override_locked_pageitems=true', newHref
-if (href.indexOf('admin_override_locked_pageitems') >= 0)
-  newHref = href.replace(/admin_override_locked_pageitems=(true|false)/, str)
+const href = getHref(window.document),
+    key = 'admin_override_locked_pageitems',
+    str = `${key}=true`
+let newHref
+if (href.indexOf(key) >= 0)
+  newHref = href.replace(new RegExp(`${key}=(true|false)`), str)
 else if (href.indexOf('?') >= 0)
   newHref = href.replace(/\?/, '?' + str + '&')
 if (newHref)
