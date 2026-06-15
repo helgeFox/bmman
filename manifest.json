@@ -59,13 +59,17 @@
         "developer"
       ]
     },
-    "editor/OpenTestEditor2.js": {
+    "deprecated/OpenTestEditor2.js": {
       "description": "Opens the Editor2 from old Editor",
       "icon": "🧪"
     },
     "General/OpenIframeSrc.js": {
       "icon": "📎",
       "description": "Åpner første og beste iframe i ny fane"
+    },
+    "editor/OpenVueditor.js": {
+      "description": "Opens current editor in new Vueditor",
+      "icon": "📎"
     }
   }
 }

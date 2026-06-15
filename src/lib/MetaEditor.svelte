@@ -65,9 +65,9 @@
 
 <div class="meta-editor">
   <div class="field field-icon">
-    <label>Icon</label>
+    <label for="bm-icon">Icon</label>
     <div class="icon-wrapper">
-      <button class="icon-btn" onclick={() => showIconPicker = !showIconPicker} title="Pick icon">
+      <button id="bm-icon" class="icon-btn" onclick={() => showIconPicker = !showIconPicker} title="Pick icon">
         {#if icon}
           <span class="icon-preview">{icon}</span>
         {:else}
@@ -83,7 +83,6 @@
               onpaste={handlePaste}
               onkeydown={handleSearchKeydown}
               placeholder="Paste or type emoji..."
-              autofocus
             />
             {#if icon}
               <button class="icon-clear" onclick={clearIcon}>Clear</button>
@@ -110,12 +109,12 @@
     <input id="bm-desc" type="text" value={description} oninput={handleDescChange} />
   </div>
   <div class="field">
-    <label>Tags</label>
+    <label for="bm-tags">Tags</label>
     <div class="tags-row">
       {#each tags as tag}
         <span class="tag">
           {tag}
-          <button class="tag-remove" onclick={() => removeTag(tag)}>x</button>
+          <button id="bm-tags" class="tag-remove" onclick={() => removeTag(tag)}>x</button>
         </span>
       {/each}
       <form class="tag-form" onsubmit={(e) => { e.preventDefault(); addTag(); }}>
