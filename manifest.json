@@ -70,6 +70,10 @@
     "editor/OpenVueditor.js": {
       "description": "Opens current editor in new Vueditor",
       "icon": "🎨"
+    },
+    "editor-dev/OldEditor.js": {
+      "icon": "🏁",
+      "description": "Open current Vueditor in old Editor"
     }
   }
 }
