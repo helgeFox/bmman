@@ -19,7 +19,7 @@ export function getEditGuid(src) {
 export function getSessionId(url, key) {
   const params = new URL(url).searchParams
   const sid = params.has(key) ? params.get(key) : null
-  return sid ? decodeURIComponent(sid) : null
+  return sid // ? decodeURIComponent(sid) : null
 }
 
 export function getCurrentEnvironment(url) {
