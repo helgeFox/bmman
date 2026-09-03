@@ -41,7 +41,8 @@
       "tags": [
         "editor",
         "developer"
-      ]
+      ],
+      "name": "OpenLocalhost"
     },
     "editor-dev/CopyLocalhost.js": {
       "description": "Kopierer localhost-url til clipboard",
@@ -49,7 +50,8 @@
       "tags": [
         "editor",
         "developer"
-      ]
+      ],
+      "name": "CopyLocalhost"
     },
     "editor-dev/GetSessionId.js": {
       "description": "Kopierer SessionId fra malen",
